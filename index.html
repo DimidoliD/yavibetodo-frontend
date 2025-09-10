@@ -3,19 +3,486 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ya Vi Be Todo - Test</title>
+    <title>Ya Vi Be Todo</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 20px 0;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--tg-theme-button-color, #2481cc);
+            margin-bottom: 8px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--tg-theme-button-color, #2481cc);
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999999);
+            margin-top: 4px;
+        }
+        
+        .todo-item {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .todo-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--tg-theme-hint-color, #999999);
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .todo-checkbox.checked {
+            background: var(--tg-theme-button-color, #2481cc);
+            border-color: var(--tg-theme-button-color, #2481cc);
+        }
+        
+        .todo-checkbox.checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .todo-content {
+            flex: 1;
+        }
+        
+        .todo-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .todo-meta {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+        
+        .todo-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .todo-action {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: transparent;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+        
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--tg-theme-button-color, #2481cc);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        
+        .modal-body { padding: 20px; }
+        
+        .form-group { margin-bottom: 16px; }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: white;
+            margin-right: 8px;
+        }
+        
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.1);
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+    </style>
 </head>
-<body style="font-family: Arial; padding: 20px; background: #f0f0f0;">
-    <h1>🎉 Тест работает!</h1>
-    <p>Если вы это видите, значит GitHub Pages функционирует корректно.</p>
-    <p>Сейчас мы загрузим полную версию приложения...</p>
-    
-    <div id="app">Загрузка...</div>
-    
+<body>
+    <div id="app">
+        <div class="loading">⏳ Загрузка...</div>
+    </div>
+
+    <button class="fab" onclick="openModal()">+</button>
+
+    <div class="modal" id="todoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Новая задача</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Название задачи</label>
+                    <input type="text" class="form-input" id="todoText" placeholder="Введите название...">
+                </div>
+                <div>
+                    <button class="btn btn-primary" onclick="saveTodo()">Создать</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        console.log('Telegram WebApp:', window.Telegram?.WebApp);
-        document.getElementById('app').innerHTML = '<h2>✅ JavaScript работает!</h2>';
+        let app = {
+            tg: null,
+            user: null,
+            todos: [],
+            apiUrl: 'https://yavibetodo-telegram-bot.onrender.com/api'
+        };
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Запуск приложения...');
+            
+            app.tg = window.Telegram?.WebApp;
+            if (app.tg) {
+                app.tg.ready();
+                app.tg.expand();
+                setupTheme();
+            }
+            
+            await loadUser();
+        });
+
+        function setupTheme() {
+            if (!app.tg) return;
+            const params = app.tg.themeParams;
+            const root = document.documentElement;
+            
+            if (params.bg_color) root.style.setProperty('--tg-theme-bg-color', params.bg_color);
+            if (params.text_color) root.style.setProperty('--tg-theme-text-color', params.text_color);
+            if (params.hint_color) root.style.setProperty('--tg-theme-hint-color', params.hint_color);
+            if (params.button_color) root.style.setProperty('--tg-theme-button-color', params.button_color);
+        }
+
+        async function loadUser() {
+            try {
+                console.log('Загрузка пользователя...');
+                
+                const response = await fetch(app.apiUrl + '/user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: app.tg?.initData || '' })
+                });
+
+                if (!response.ok) throw new Error('Ошибка сервера');
+
+                const data = await response.json();
+                app.user = data.user;
+                app.todos = data.todos || [];
+                
+                console.log('Данные загружены:', app.user, app.todos);
+                renderApp();
+                
+            } catch (error) {
+                console.error('Ошибка:', error);
+                document.getElementById('app').innerHTML = `
+                    <div class="empty-state">
+                        <h3>⚠️ Ошибка загрузки</h3>
+                        <p>Не удалось подключиться к серверу</p>
+                        <button class="btn btn-primary" onclick="location.reload()">🔄 Повторить</button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderApp() {
+            const completed = app.todos.filter(t => t.completed).length;
+            const total = app.todos.length;
+            const pending = total - completed;
+            
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <h1>📝 Ya Vi Be Todo</h1>
+                    <p>Привет, ${app.user?.first_name || 'Пользователь'}!</p>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <span class="stat-number">${total}</span>
+                        <div class="stat-label">Всего</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">${completed}</span>
+                        <div class="stat-label">Выполнено</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">${pending}</span>
+                        <div class="stat-label">В работе</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">${total > 0 ? Math.round((completed/total)*100) : 0}%</span>
+                        <div class="stat-label">Прогресс</div>
+                    </div>
+                </div>
+
+                <div id="todosList">
+                    ${renderTodos()}
+                </div>
+            `;
+        }
+
+        function renderTodos() {
+            if (app.todos.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <h3>📋 Пока задач нет</h3>
+                        <p>Нажмите кнопку "+" чтобы создать первую задачу</p>
+                    </div>
+                `;
+            }
+
+            return app.todos
+                .sort((a, b) => a.completed - b.completed || new Date(b.createdAt) - new Date(a.createdAt))
+                .map(todo => `
+                    <div class="todo-item">
+                        <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" 
+                             onclick="toggleTodo(${todo.id})"></div>
+                        <div class="todo-content">
+                            <div class="todo-title" style="${todo.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(todo.text)}</div>
+                            <div class="todo-meta">${formatDate(todo.createdAt)}</div>
+                        </div>
+                        <div class="todo-actions">
+                            <button class="todo-action" onclick="deleteTodo(${todo.id})">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        async function toggleTodo(id) {
+            const todo = app.todos.find(t => t.id === id);
+            if (!todo) return;
+
+            try {
+                const response = await fetch(`${app.apiUrl}/todos/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: app.user.id,
+                        completed: !todo.completed
+                    })
+                });
+
+                if (response.ok) {
+                    todo.completed = !todo.completed;
+                    renderApp();
+                    app.tg?.HapticFeedback?.impactOccurred('light');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+            }
+        }
+
+        async function deleteTodo(id) {
+            if (!confirm('Удалить задачу?')) return;
+
+            try {
+                const response = await fetch(`${app.apiUrl}/todos/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: app.user.id })
+                });
+
+                if (response.ok) {
+                    app.todos = app.todos.filter(t => t.id !== id);
+                    renderApp();
+                    app.tg?.HapticFeedback?.notificationOccurred('success');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+            }
+        }
+
+        function openModal() {
+            document.getElementById('todoModal').classList.add('active');
+            document.getElementById('todoText').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('todoModal').classList.remove('active');
+            document.getElementById('todoText').value = '';
+        }
+
+        async function saveTodo() {
+            const text = document.getElementById('todoText').value.trim();
+            if (!text) return;
+
+            try {
+                const response = await fetch(`${app.apiUrl}/todos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: app.user.id,
+                        text: text,
+                        priority: 'medium'
+                    })
+                });
+
+                if (response.ok) {
+                    const newTodo = await response.json();
+                    app.todos.push(newTodo);
+                    closeModal();
+                    renderApp();
+                    app.tg?.HapticFeedback?.notificationOccurred('success');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('ru');
+        }
+
+        // Закрытие модала по клику вне его
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('todoModal');
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
     </script>
 </body>
 </html>
