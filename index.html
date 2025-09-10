@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ya Vi Be Todo</title>
+    <title>Ya Vi Be Todo - Advanced</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,250 +14,915 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-color: #3b82f6;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --bg-color: #ffffff;
+            --surface-color: #f8fafc;
+            --text-color: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --radius: 8px;
+            --radius-lg: 12px;
+            --spacing: 16px;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --text-color: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
+            background: var(--bg-color);
+            color: var(--text-color);
             min-height: 100vh;
-            padding: 16px;
-            padding-bottom: 100px;
+            transition: all 0.3s ease;
         }
 
+        /* Header */
         .app-header {
-            text-align: center;
-            margin-bottom: 24px;
-            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            background: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: var(--spacing);
+            z-index: 100;
+            backdrop-filter: blur(10px);
         }
 
-        .app-header h1 {
-            margin: 0 0 8px 0;
-            font-size: 28px;
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .user-info h1 {
+            font-size: 24px;
             font-weight: 700;
-            background: linear-gradient(45deg, #2481cc, #1976d2);
+            background: linear-gradient(45deg, var(--primary-color), #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
+            margin-bottom: 4px;
         }
 
-        .subtitle {
-            margin: 0;
-            color: var(--tg-theme-hint-color, #999999);
-            font-size: 16px;
-            font-weight: 400;
+        .user-info p {
+            color: var(--text-secondary);
+            font-size: 14px;
         }
 
-        .stats {
-            background: rgba(36, 129, 204, 0.1);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .stats-row {
+        .header-actions {
             display: flex;
-            justify-content: space-around;
-            gap: 16px;
+            gap: 8px;
         }
 
-        .stat-item {
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--surface-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: 4px;
+            margin: var(--spacing);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            overflow-x: auto;
+        }
+
+        .nav-tab {
             flex: 1;
-            text-align: center;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .nav-tab.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 var(--spacing) calc(var(--spacing) * 5);
+        }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Stats Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing);
+            margin-bottom: calc(var(--spacing) * 2);
+        }
+
+        .stat-card {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: calc(var(--spacing) * 1.5);
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
         }
 
         .stat-number {
-            font-size: 24px;
+            font-size: 32px;
             font-weight: 700;
-            color: var(--tg-theme-button-color, #2481cc);
+            color: var(--primary-color);
             display: block;
+            margin-bottom: 4px;
         }
 
         .stat-label {
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #999999);
+            font-size: 14px;
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            font-weight: 500;
         }
 
+        .stat-change {
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .stat-change.positive { color: var(--success-color); }
+        .stat-change.negative { color: var(--danger-color); }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--spacing);
+            margin-bottom: calc(var(--spacing) * 2);
+        }
+
+        .quick-action {
+            background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
+            border-radius: var(--radius-lg);
+            padding: calc(var(--spacing) * 1.5);
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .quick-action:hover {
+            transform: scale(1.02);
+        }
+
+        .quick-action-icon {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* Filters and Search */
+        .filters-section {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing);
+            margin-bottom: calc(var(--spacing) * 2);
+        }
+
+        .search-bar {
+            position: relative;
+            margin-bottom: var(--spacing);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 48px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .filter-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: var(--spacing);
+        }
+
+        .filter-tag {
+            padding: 6px 12px;
+            background: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .filter-tag.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .sort-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .sort-select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Todo List */
         .todos-container {
-            margin-bottom: 80px;
+            margin-bottom: calc(var(--spacing) * 5);
         }
 
         .todo-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px;
-            margin-bottom: 12px;
-            background: var(--tg-theme-secondary-bg-color, rgba(0, 0, 0, 0.05));
-            border-radius: 16px;
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing);
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            cursor: grab;
+            overflow: hidden;
         }
 
         .todo-item:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .todo-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
         }
 
         .todo-item.completed {
-            opacity: 0.6;
-            transform: none;
+            opacity: 0.7;
+        }
+
+        .todo-header {
+            display: flex;
+            align-items: flex-start;
+            padding: var(--spacing);
+            gap: 12px;
+        }
+
+        .todo-checkbox {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            margin-top: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .todo-checkbox.checked {
+            background: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .todo-checkbox.checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
 
         .todo-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .todo-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .todo-item.completed .todo-title {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+
+        .todo-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .priority-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .priority-high {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .priority-medium {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning-color);
+        }
+
+        .priority-low {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .category-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
             display: flex;
             align-items: center;
-            flex: 1;
-            gap: 12px;
+            gap: 4px;
         }
 
-        .todo-text {
-            flex: 1;
-            font-size: 16px;
-            line-height: 1.4;
-            word-wrap: break-word;
+        .deadline-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary-color);
         }
 
-        .todo-item.completed .todo-text {
-            text-decoration: line-through;
+        .deadline-badge.overdue {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
         }
 
-        .delete-btn {
-            background: rgba(255, 59, 48, 0.1);
+        .todo-actions {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            flex-shrink: 0;
+        }
+
+        .todo-action {
+            width: 32px;
+            height: 32px;
             border: none;
-            font-size: 18px;
+            border-radius: var(--radius);
             cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: all 0.2s ease;
-            color: #ff3b30;
+            background: transparent;
+            color: var(--text-secondary);
         }
 
-        .delete-btn:hover {
-            background: rgba(255, 59, 48, 0.2);
+        .todo-action:hover {
+            background: var(--bg-color);
             transform: scale(1.1);
         }
 
-        .add-todo-form {
+        .todo-action.delete:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        /* Subtasks */
+        .subtasks {
+            padding: 0 var(--spacing) var(--spacing);
+            border-top: 1px solid var(--border-color);
+            margin-top: var(--spacing);
+        }
+
+        .subtask {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .subtask-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .subtask-checkbox.checked {
+            background: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        /* Floating Action Button */
+        .fab {
             position: fixed;
-            bottom: 0;
+            bottom: calc(var(--spacing) * 2);
+            right: calc(var(--spacing) * 2);
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
             left: 0;
             right: 0;
-            background: var(--tg-theme-bg-color, #ffffff);
-            padding: 20px;
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: var(--spacing);
         }
 
-        .add-todo-form input {
-            width: 100%;
-            padding: 16px 20px;
-            border: 2px solid var(--tg-theme-button-color, #2481cc);
-            border-radius: 12px;
-            font-size: 16px;
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            margin-bottom: 12px;
-            outline: none;
-            transition: all 0.2s ease;
-        }
-
-        .add-todo-form input:focus {
-            border-color: var(--tg-theme-button-color, #2481cc);
-            box-shadow: 0 0 0 4px rgba(36, 129, 204, 0.1);
-        }
-
-        .form-buttons {
+        .modal.active {
             display: flex;
-            gap: 12px;
+            animation: modalFadeIn 0.3s ease;
         }
 
-        .form-buttons button {
-            flex: 1;
-            padding: 16px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px) scale(0.9); }
+            to { transform: translateY(0) scale(1); }
+        }
+
+        .modal-header {
+            padding: calc(var(--spacing) * 1.5);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 20px;
             font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
             cursor: pointer;
+            border-radius: var(--radius);
+            color: var(--text-secondary);
             transition: all 0.2s ease;
         }
 
-        .btn-primary {
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
+        .modal-close:hover {
+            background: var(--surface-color);
         }
 
-        .btn-primary:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
+        .modal-body {
+            padding: calc(var(--spacing) * 1.5);
         }
 
-        .btn-secondary {
-            background: rgba(0, 0, 0, 0.1);
-            color: var(--tg-theme-text-color, #000000);
+        .form-group {
+            margin-bottom: calc(var(--spacing) * 1.5);
         }
 
-        .btn-secondary:hover {
-            background: rgba(0, 0, 0, 0.15);
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-color);
         }
 
-        .empty-state, .error-state, .loading-state {
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .priority-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .priority-option {
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
             text-align: center;
-            padding: 60px 20px;
-        }
-
-        .empty-state h3, .error-state h3, .loading-state h3 {
-            margin-bottom: 16px;
-            font-size: 24px;
-            font-weight: 600;
-        }
-
-        .empty-state p, .error-state p, .loading-state p {
-            color: var(--tg-theme-hint-color, #999999);
-            font-size: 16px;
-            line-height: 1.5;
-            margin-bottom: 24px;
-        }
-
-        .error-state button, .loading-state button {
-            padding: 16px 32px;
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
+            background: var(--bg-color);
         }
 
-        .error-state button:hover, .loading-state button:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
+        .priority-option.selected {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
         }
 
-        input[type="checkbox"] {
-            width: 24px;
-            height: 24px;
-            accent-color: var(--tg-theme-button-color, #2481cc);
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+        }
+
+        .category-option {
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .category-option.selected {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .subtasks-editor {
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: var(--spacing);
+        }
+
+        .subtask-input {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .subtask-text {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            font-size: 14px;
+        }
+
+        .add-subtask-btn {
+            padding: 8px 16px;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
             cursor: pointer;
         }
 
-        .pulse {
-            animation: pulse 2s infinite;
+        .subtask-list {
+            max-height: 200px;
+            overflow-y: auto;
         }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+        .subtask-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
         }
 
+        .remove-subtask {
+            color: var(--danger-color);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        /* Charts */
+        .chart-container {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: calc(var(--spacing) * 1.5);
+            margin-bottom: calc(var(--spacing) * 2);
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Settings */
+        .settings-section {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: calc(var(--spacing) * 1.5);
+            margin-bottom: calc(var(--spacing) * 2);
+        }
+
+        .settings-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing);
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing) 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-label {
+            font-weight: 500;
+        }
+
+        .setting-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .toggle.active {
+            background: var(--primary-color);
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s ease;
+        }
+
+        .toggle.active::after {
+            transform: translateX(24px);
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: calc(var(--spacing) * 4) var(--spacing);
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: var(--spacing);
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-description {
+            color: var(--text-secondary);
+            margin-bottom: calc(var(--spacing) * 2);
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: calc(var(--spacing) * 4);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: var(--spacing);
+                text-align: center;
+            }
+
+            .header-actions {
+                justify-content: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .quick-actions {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .nav-tabs {
+                margin: 8px;
+            }
+
+            .main-content {
+                padding: 0 8px calc(var(--spacing) * 5);
+            }
+
+            .fab {
+                bottom: var(--spacing);
+                right: var(--spacing);
+                width: 56px;
+                height: 56px;
+                font-size: 20px;
+            }
+        }
+
+        /* Animations */
         .slide-up {
-            animation: slideUp 0.3s ease-out;
+            animation: slideUp 0.3s ease;
         }
 
         @keyframes slideUp {
@@ -269,68 +936,178 @@
             }
         }
 
-        /* Адаптивность */
-        @media (max-width: 480px) {
-            body {
-                padding: 12px;
+        .bounce {
+            animation: bounce 0.6s ease;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translateY(0);
             }
-            
-            .app-header h1 {
-                font-size: 24px;
+            40%, 43% {
+                transform: translateY(-10px);
             }
-            
-            .todo-item {
-                padding: 12px;
+            70% {
+                transform: translateY(-5px);
             }
-            
-            .add-todo-form {
-                padding: 16px;
+            90% {
+                transform: translateY(-2px);
             }
+        }
+
+        /* Notification Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--surface-color);
+            color: var(--text-color);
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            z-index: 3000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left-color: var(--success-color);
+        }
+
+        .toast.error {
+            border-left-color: var(--danger-color);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning-color);
         }
     </style>
 </head>
 <body>
     <div id="app">
-        <div class="loading-state">
-            <h3 class="pulse">🔄 Загрузка...</h3>
-            <p>Подключаемся к серверу</p>
+        <div class="loading">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="fab" id="addTodoFab">
+        <span>+</span>
+    </button>
+
+    <!-- Add/Edit Todo Modal -->
+    <div class="modal" id="todoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Новая задача</h3>
+                <button class="modal-close" id="modalClose">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="todoForm">
+                    <div class="form-group">
+                        <label class="form-label">Название задачи</label>
+                        <input type="text" class="form-input" id="todoText" placeholder="Введите название задачи..." maxlength="200" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Приоритет</label>
+                        <div class="priority-options">
+                            <div class="priority-option" data-priority="high">
+                                <div>🔥 Высокий</div>
+                            </div>
+                            <div class="priority-option selected" data-priority="medium">
+                                <div>⚡ Средний</div>
+                            </div>
+                            <div class="priority-option" data-priority="low">
+                                <div>🌱 Низкий</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Категория</label>
+                        <div class="category-grid" id="categoryGrid">
+                            <!-- Categories will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Дедлайн</label>
+                        <input type="datetime-local" class="form-input" id="todoDeadline">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Подзадачи</label>
+                        <div class="subtasks-editor">
+                            <div class="subtask-input">
+                                <input type="text" class="subtask-text" id="subtaskInput" placeholder="Добавить подзадачу...">
+                                <button type="button" class="add-subtask-btn" id="addSubtaskBtn">Добавить</button>
+                            </div>
+                            <div class="subtask-list" id="subtaskList">
+                                <!-- Subtasks will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">
+                            <span id="submitText">Создать</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">
+                            Отмена
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <script>
-        class TelegramWebApp {
+        class AdvancedTodoApp {
             constructor() {
                 this.tg = window.Telegram?.WebApp;
                 this.user = null;
                 this.todos = [];
-                // ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ URL ОТ RENDER:
+                this.categories = [];
+                this.habits = [];
+                this.preferences = {};
+                this.stats = {};
                 this.apiUrl = 'https://yavibetodo-telegram-bot.onrender.com/api';
+                
+                this.currentTab = 'dashboard';
+                this.currentTodo = null;
+                this.filteredTodos = [];
+                this.searchQuery = '';
+                this.selectedFilters = {
+                    priority: 'all',
+                    category: 'all',
+                    status: 'all'
+                };
+                this.sortBy = 'created';
+
+                this.charts = {};
                 
                 this.init();
             }
 
-            init() {
+            async init() {
                 if (!this.tg) {
                     console.error('Telegram WebApp не найден');
                     this.showError('Приложение должно запускаться из Telegram');
                     return;
                 }
 
-                // Настройка Telegram WebApp
                 this.tg.ready();
                 this.tg.expand();
-                
-                // Устанавливаем цвета темы
                 this.setupTheme();
+                this.setupEventListeners();
                 
-                // Получаем данные пользователя
-                this.authenticateUser();
-                
-                // Настраиваем кнопки
-                this.setupMainButton();
-                
-                // Обработчик для Enter в форме
-                this.setupKeyboardHandlers();
+                await this.authenticateUser();
             }
 
             setupTheme() {
@@ -339,22 +1116,69 @@
                 const root = document.documentElement;
                 const params = this.tg.themeParams;
                 
-                if (params.bg_color) root.style.setProperty('--tg-theme-bg-color', params.bg_color);
-                if (params.text_color) root.style.setProperty('--tg-theme-text-color', params.text_color);
-                if (params.hint_color) root.style.setProperty('--tg-theme-hint-color', params.hint_color);
-                if (params.link_color) root.style.setProperty('--tg-theme-link-color', params.link_color);
-                if (params.button_color) root.style.setProperty('--tg-theme-button-color', params.button_color);
-                if (params.button_text_color) root.style.setProperty('--tg-theme-button-text-color', params.button_text_color);
-                if (params.secondary_bg_color) root.style.setProperty('--tg-theme-secondary-bg-color', params.secondary_bg_color);
+                if (params.bg_color) root.style.setProperty('--bg-color', params.bg_color);
+                if (params.text_color) root.style.setProperty('--text-color', params.text_color);
+                if (params.hint_color) root.style.setProperty('--text-secondary', params.hint_color);
+                if (params.button_color) root.style.setProperty('--primary-color', params.button_color);
+                if (params.secondary_bg_color) root.style.setProperty('--surface-color', params.secondary_bg_color);
             }
 
-            setupKeyboardHandlers() {
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && e.target.id === 'todoInput') {
-                        this.addTodo();
+            setupEventListeners() {
+                // FAB
+                document.getElementById('addTodoFab').addEventListener('click', () => {
+                    this.openTodoModal();
+                });
+
+                // Modal
+                document.getElementById('modalClose').addEventListener('click', () => {
+                    this.closeTodoModal();
+                });
+
+                document.getElementById('cancelBtn').addEventListener('click', () => {
+                    this.closeTodoModal();
+                });
+
+                // Form
+                document.getElementById('todoForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveTodo();
+                });
+
+                // Priority selection
+                document.querySelectorAll('.priority-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('.priority-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                    });
+                });
+
+                // Subtasks
+                document.getElementById('addSubtaskBtn').addEventListener('click', () => {
+                    this.addSubtask();
+                });
+
+                document.getElementById('subtaskInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.addSubtask();
                     }
+                });
+
+                // Modal backdrop
+                document.getElementById('todoModal').addEventListener('click', (e) => {
+                    if (e.target === e.currentTarget) {
+                        this.closeTodoModal();
+                    }
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
-                        this.hideAddTodoForm();
+                        this.closeTodoModal();
+                    }
+                    if (e.key === 'n' && e.ctrlKey) {
+                        e.preventDefault();
+                        this.openTodoModal();
                     }
                 });
             }
@@ -377,9 +1201,14 @@
 
                     const data = await response.json();
                     this.user = data.user;
-                    this.todos = data.todos;
+                    this.todos = data.todos || [];
+                    this.categories = data.categories || [];
+                    this.habits = data.habits || [];
+                    this.preferences = data.preferences || {};
+                    this.stats = data.stats || {};
                     
                     this.renderApp();
+                    this.filterTodos();
                     
                 } catch (error) {
                     console.error('Ошибка аутентификации:', error);
@@ -387,228 +1216,690 @@
                 }
             }
 
-            setupMainButton() {
-                if (!this.tg?.MainButton) return;
-                
-                this.tg.MainButton.setText('➕ Добавить задачу');
-                this.tg.MainButton.show();
-                
-                this.tg.MainButton.onClick(() => {
-                    this.showAddTodoForm();
-                });
-            }
-
             renderApp() {
                 const app = document.getElementById('app');
-                if (!app) return;
-
                 app.innerHTML = `
-                    <div class="telegram-todo-app slide-up">
-                        <header class="app-header">
-                            <h1>📝 Ya Vi Be Todo</h1>
-                            <p class="subtitle">Привет, ${this.user?.first_name || 'Пользователь'}!</p>
-                        </header>
-                        
-                        ${this.renderStats()}
-                        
-                        <div class="todos-container">
-                            ${this.renderTodos()}
-                        </div>
-                        
-                        <div class="add-todo-form" id="addTodoForm" style="display: none;">
-                            <input 
-                                type="text" 
-                                id="todoInput" 
-                                placeholder="Введите новую задачу..."
-                                maxlength="200"
-                            />
-                            <div class="form-buttons">
-                                <button class="btn-primary" onclick="telegramApp.addTodo()">
-                                    ✅ Добавить
-                                </button>
-                                <button class="btn-secondary" onclick="telegramApp.hideAddTodoForm()">
-                                    ❌ Отмена
-                                </button>
+                    <header class="app-header">
+                        <div class="header-content">
+                            <div class="user-info">
+                                <h1>Ya Vi Be Todo</h1>
+                                <p>Привет, ${this.user?.first_name || 'Пользователь'}! 👋</p>
+                            </div>
+                            <div class="header-actions">
+                                <button class="btn btn-secondary" onclick="app.toggleTheme()">🌙</button>
+                                <button class="btn btn-secondary" onclick="app.showNotifications()">🔔</button>
                             </div>
                         </div>
+                    </header>
+
+                    <nav class="nav-tabs">
+                        <button class="nav-tab active" data-tab="dashboard">📊 Дашборд</button>
+                        <button class="nav-tab" data-tab="todos">📝 Задачи</button>
+                        <button class="nav-tab" data-tab="analytics">📈 Аналитика</button>
+                        <button class="nav-tab" data-tab="categories">🏷️ Категории</button>
+                        <button class="nav-tab" data-tab="settings">⚙️ Настройки</button>
+                    </nav>
+
+                    <main class="main-content">
+                        ${this.renderTabContent()}
+                    </main>
+                `;
+
+                this.setupTabNavigation();
+                this.setupDragAndDrop();
+                this.loadAnalytics();
+            }
+
+            renderTabContent() {
+                return `
+                    <div class="content-section active" data-section="dashboard">
+                        ${this.renderDashboard()}
+                    </div>
+                    <div class="content-section" data-section="todos">
+                        ${this.renderTodosSection()}
+                    </div>
+                    <div class="content-section" data-section="analytics">
+                        ${this.renderAnalytics()}
+                    </div>
+                    <div class="content-section" data-section="categories">
+                        ${this.renderCategories()}
+                    </div>
+                    <div class="content-section" data-section="settings">
+                        ${this.renderSettings()}
                     </div>
                 `;
             }
 
-            renderStats() {
+            renderDashboard() {
                 const total = this.todos.length;
                 const completed = this.todos.filter(todo => todo.completed).length;
                 const pending = total - completed;
-                const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+                const overdue = this.todos.filter(todo => 
+                    !todo.completed && todo.deadline && new Date(todo.deadline) < new Date()
+                ).length;
+
+                const completedToday = this.stats.completedToday || 0;
+                const streak = this.stats.streakDays || 0;
 
                 return `
-                    <div class="stats">
-                        <div class="stats-row">
-                            <div class="stat-item">
-                                <span class="stat-number">${total}</span>
-                                <span class="stat-label">Всего</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-number">${completed}</span>
-                                <span class="stat-label">Готово</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-number">${pending}</span>
-                                <span class="stat-label">Осталось</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-number">${progress}%</span>
-                                <span class="stat-label">Прогресс</span>
-                            </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-number">${total}</span>
+                            <div class="stat-label">Всего задач</div>
+                            <div class="stat-change positive">+${this.getRecentCount()} за неделю</div>
                         </div>
+                        <div class="stat-card">
+                            <span class="stat-number">${completed}</span>
+                            <div class="stat-label">Выполнено</div>
+                            <div class="stat-change positive">${total > 0 ? Math.round((completed / total) * 100) : 0}% прогресс</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number">${pending}</span>
+                            <div class="stat-label">В работе</div>
+                            <div class="stat-change ${overdue > 0 ? 'negative' : 'positive'}">${overdue} просрочено</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number">${streak}</span>
+                            <div class="stat-label">Дней подряд</div>
+                            <div class="stat-change positive">${completedToday} сегодня</div>
+                        </div>
+                    </div>
+
+                    <div class="quick-actions">
+                        <button class="quick-action" onclick="app.openTodoModal()">
+                            <span class="quick-action-icon">➕</span>
+                            Новая задача
+                        </button>
+                        <button class="quick-action" onclick="app.switchTab('todos')">
+                            <span class="quick-action-icon">📝</span>
+                            Все задачи
+                        </button>
+                        <button class="quick-action" onclick="app.switchTab('analytics')">
+                            <span class="quick-action-icon">📊</span>
+                            Аналитика
+                        </button>
+                        <button class="quick-action" onclick="app.showTodayTasks()">
+                            <span class="quick-action-icon">📅</span>
+                            На сегодня
+                        </button>
+                    </div>
+
+                    <div class="recent-tasks">
+                        <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 600;">Последние задачи</h3>
+                        ${this.renderRecentTodos()}
+                    </div>
+                `;
+            }
+
+            renderTodosSection() {
+                return `
+                    <div class="filters-section">
+                        <div class="search-bar">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" class="search-input" placeholder="Поиск задач..." 
+                                   value="${this.searchQuery}" onInput="app.handleSearch(this.value)">
+                        </div>
+                        
+                        <div class="filter-tags">
+                            <div class="filter-tag ${this.selectedFilters.status === 'all' ? 'active' : ''}" 
+                                 onclick="app.setFilter('status', 'all')">Все</div>
+                            <div class="filter-tag ${this.selectedFilters.status === 'pending' ? 'active' : ''}" 
+                                 onclick="app.setFilter('status', 'pending')">В работе</div>
+                            <div class="filter-tag ${this.selectedFilters.status === 'completed' ? 'active' : ''}" 
+                                 onclick="app.setFilter('status', 'completed')">Выполнено</div>
+                            <div class="filter-tag ${this.selectedFilters.status === 'overdue' ? 'active' : ''}" 
+                                 onclick="app.setFilter('status', 'overdue')">Просрочено</div>
+                        </div>
+
+                        <div class="sort-controls">
+                            <label>Сортировка:</label>
+                            <select class="sort-select" onchange="app.setSortBy(this.value)">
+                                <option value="created" ${this.sortBy === 'created' ? 'selected' : ''}>По дате создания</option>
+                                <option value="priority" ${this.sortBy === 'priority' ? 'selected' : ''}>По приоритету</option>
+                                <option value="deadline" ${this.sortBy === 'deadline' ? 'selected' : ''}>По дедлайну</option>
+                                <option value="alphabetical" ${this.sortBy === 'alphabetical' ? 'selected' : ''}>По алфавиту</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="todos-container" id="todosContainer">
+                        ${this.renderTodos()}
                     </div>
                 `;
             }
 
             renderTodos() {
-                if (!this.todos.length) {
+                if (this.filteredTodos.length === 0) {
                     return `
                         <div class="empty-state">
-                            <h3>📋 Список пуст</h3>
-                            <p>Нажмите кнопку "Добавить задачу" внизу экрана, чтобы создать первую задачу!</p>
+                            <div class="empty-icon">📋</div>
+                            <h3 class="empty-title">Задач не найдено</h3>
+                            <p class="empty-description">
+                                ${this.todos.length === 0 ? 
+                                    'Создайте первую задачу, нажав кнопку "+" внизу экрана' : 
+                                    'Попробуйте изменить фильтры или поисковый запрос'}
+                            </p>
                         </div>
                     `;
                 }
 
-                return this.todos
-                    .sort((a, b) => {
-                        // Сначала незавершённые, потом завершённые
-                        if (a.completed !== b.completed) {
-                            return a.completed ? 1 : -1;
-                        }
-                        // Затем по дате создания (новые сверху)
-                        return new Date(b.createdAt) - new Date(a.createdAt);
-                    })
-                    .map(todo => `
-                        <div class="todo-item ${todo.completed ? 'completed' : ''} slide-up">
+                return this.filteredTodos.map(todo => this.renderTodoItem(todo)).join('');
+            }
+
+            renderTodoItem(todo) {
+                const category = this.categories.find(cat => cat.id === todo.categoryId);
+                const isOverdue = todo.deadline && new Date(todo.deadline) < new Date() && !todo.completed;
+                const completedSubtasks = todo.subtasks?.filter(st => st.completed).length || 0;
+                const totalSubtasks = todo.subtasks?.length || 0;
+
+                return `
+                    <div class="todo-item ${todo.completed ? 'completed' : ''}" data-todo-id="${todo.id}">
+                        <div class="todo-header">
+                            <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" 
+                                 onclick="app.toggleTodo(${todo.id})"></div>
+                            
                             <div class="todo-content">
-                                <input 
-                                    type="checkbox" 
-                                    ${todo.completed ? 'checked' : ''}
-                                    onchange="telegramApp.toggleTodo(${todo.id}, this.checked)"
-                                />
-                                <span class="todo-text">${this.escapeHtml(todo.text)}</span>
+                                <div class="todo-title">${this.escapeHtml(todo.text)}</div>
+                                
+                                <div class="todo-meta">
+                                    <span class="priority-badge priority-${todo.priority}">
+                                        ${todo.priority === 'high' ? '🔥 Высокий' : 
+                                          todo.priority === 'medium' ? '⚡ Средний' : '🌱 Низкий'}
+                                    </span>
+                                    
+                                    ${category ? `
+                                        <span class="category-badge" style="background: ${category.color}20; color: ${category.color}">
+                                            ${category.icon} ${category.name}
+                                        </span>
+                                    ` : ''}
+                                    
+                                    ${todo.deadline ? `
+                                        <span class="deadline-badge ${isOverdue ? 'overdue' : ''}">
+                                            ${isOverdue ? '⚠️' : '📅'} ${this.formatDate(todo.deadline)}
+                                        </span>
+                                    ` : ''}
+                                    
+                                    ${totalSubtasks > 0 ? `
+                                        <span class="deadline-badge">
+                                            ✅ ${completedSubtasks}/${totalSubtasks}
+                                        </span>
+                                    ` : ''}
+                                </div>
                             </div>
-                            <button 
-                                class="delete-btn"
-                                onclick="telegramApp.deleteTodo(${todo.id})"
-                                title="Удалить задачу"
-                            >🗑️</button>
+                            
+                            <div class="todo-actions">
+                                <button class="todo-action" onclick="app.editTodo(${todo.id})" title="Редактировать">
+                                    ✏️
+                                </button>
+                                <button class="todo-action delete" onclick="app.deleteTodo(${todo.id})" title="Удалить">
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
-                    `).join('');
+                        
+                        ${totalSubtasks > 0 ? `
+                            <div class="subtasks">
+                                ${todo.subtasks.map(subtask => `
+                                    <div class="subtask">
+                                        <div class="subtask-checkbox ${subtask.completed ? 'checked' : ''}" 
+                                             onclick="app.toggleSubtask(${todo.id}, ${subtask.id})"></div>
+                                        <span ${subtask.completed ? 'style="text-decoration: line-through; opacity: 0.6"' : ''}>
+                                            ${this.escapeHtml(subtask.text)}
+                                        </span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
             }
 
-            showAddTodoForm() {
-                const form = document.getElementById('addTodoForm');
-                const input = document.getElementById('todoInput');
-                
-                if (form && input) {
-                    form.style.display = 'block';
-                    setTimeout(() => input.focus(), 100);
-                    
-                    // Скрываем главную кнопку
-                    this.tg?.MainButton?.hide();
+            renderRecentTodos() {
+                const recentTodos = this.todos
+                    .filter(todo => !todo.completed)
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .slice(0, 3);
+
+                if (recentTodos.length === 0) {
+                    return '<p style="color: var(--text-secondary); text-align: center;">Нет активных задач</p>';
+                }
+
+                return recentTodos.map(todo => this.renderTodoItem(todo)).join('');
+            }
+
+            renderAnalytics() {
+                return `
+                    <div class="chart-container">
+                        <h3 class="chart-title">Прогресс по дням</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="progressChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3 class="chart-title">Статистика по категориям</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="categoriesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3 class="chart-title">Приоритеты задач</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="prioritiesChart"></canvas>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderCategories() {
+                return `
+                    <div style="margin-bottom: 24px;">
+                        <button class="btn btn-primary" onclick="app.addCategory()">
+                            ➕ Добавить категорию
+                        </button>
+                    </div>
+
+                    <div class="category-grid">
+                        ${this.categories.map(category => `
+                            <div class="category-option" style="border-color: ${category.color};">
+                                <div style="font-size: 24px;">${category.icon}</div>
+                                <div style="font-weight: 500;">${category.name}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">
+                                    ${this.todos.filter(todo => todo.categoryId === category.id).length} задач
+                                </div>
+                                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <button class="btn" style="padding: 4px 8px; font-size: 12px;" 
+                                            onclick="app.editCategory(${category.id})">✏️</button>
+                                    <button class="btn" style="padding: 4px 8px; font-size: 12px;" 
+                                            onclick="app.deleteCategory(${category.id})">🗑️</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            renderSettings() {
+                return `
+                    <div class="settings-section">
+                        <h3 class="settings-title">Внешний вид</h3>
+                        <div class="setting-item">
+                            <div>
+                                <div class="setting-label">Тема</div>
+                                <div class="setting-description">Выберите тему оформления</div>
+                            </div>
+                            <select class="form-select" style="width: auto;" onchange="app.setTheme(this.value)">
+                                <option value="auto" ${this.preferences.theme === 'auto' ? 'selected' : ''}>Авто</option>
+                                <option value="light" ${this.preferences.theme === 'light' ? 'selected' : ''}>Светлая</option>
+                                <option value="dark" ${this.preferences.theme === 'dark' ? 'selected' : ''}>Темная</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 class="settings-title">Уведомления</h3>
+                        <div class="setting-item">
+                            <div>
+                                <div class="setting-label">Push-уведомления</div>
+                                <div class="setting-description">Получать уведомления о дедлайнах</div>
+                            </div>
+                            <div class="toggle ${this.preferences.notifications ? 'active' : ''}" 
+                                 onclick="app.toggleNotifications()"></div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 class="settings-title">Задачи</h3>
+                        <div class="setting-item">
+                            <div>
+                                <div class="setting-label">Приоритет по умолчанию</div>
+                                <div class="setting-description">Приоритет для новых задач</div>
+                            </div>
+                            <select class="form-select" style="width: auto;" onchange="app.setDefaultPriority(this.value)">
+                                <option value="low" ${this.preferences.defaultPriority === 'low' ? 'selected' : ''}>Низкий</option>
+                                <option value="medium" ${this.preferences.defaultPriority === 'medium' ? 'selected' : ''}>Средний</option>
+                                <option value="high" ${this.preferences.defaultPriority === 'high' ? 'selected' : ''}>Высокий</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div>
+                                <div class="setting-label">Сортировка по умолчанию</div>
+                                <div class="setting-description">Как сортировать задачи</div>
+                            </div>
+                            <select class="form-select" style="width: auto;" onchange="app.setDefaultSort(this.value)">
+                                <option value="created" ${this.preferences.sortBy === 'created' ? 'selected' : ''}>По дате создания</option>
+                                <option value="priority" ${this.preferences.sortBy === 'priority' ? 'selected' : ''}>По приоритету</option>
+                                <option value="deadline" ${this.preferences.sortBy === 'deadline' ? 'selected' : ''}>По дедлайну</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 class="settings-title">Данные</h3>
+                        <div class="setting-item">
+                            <div>
+                                <div class="setting-label">Экспорт данных</div>
+                                <div class="setting-description">Скачать все задачи в JSON формате</div>
+                            </div>
+                            <button class="btn btn-secondary" onclick="app.exportData()">📥 Экспорт</button>
+                        </div>
+                        <div class="setting-item">
+                            <div>
+                                <div class="setting-label">Очистить данные</div>
+                                <div class="setting-description">Удалить все выполненные задачи</div>
+                            </div>
+                            <button class="btn btn-secondary" onclick="app.clearCompleted()">🗑️ Очистить</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Event Handlers
+            setupTabNavigation() {
+                document.querySelectorAll('.nav-tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        const tabName = tab.dataset.tab;
+                        this.switchTab(tabName);
+                    });
+                });
+            }
+
+            switchTab(tabName) {
+                // Update active tab
+                document.querySelectorAll('.nav-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                    if (tab.dataset.tab === tabName) {
+                        tab.classList.add('active');
+                    }
+                });
+
+                // Update active section
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.remove('active');
+                    if (section.dataset.section === tabName) {
+                        section.classList.add('active');
+                    }
+                });
+
+                this.currentTab = tabName;
+
+                // Load specific tab data
+                if (tabName === 'analytics') {
+                    setTimeout(() => this.loadAnalytics(), 100);
                 }
             }
 
-            hideAddTodoForm() {
-                const form = document.getElementById('addTodoForm');
-                const input = document.getElementById('todoInput');
+            setupDragAndDrop() {
+                const container = document.getElementById('todosContainer');
+                if (container && window.Sortable) {
+                    new Sortable(container, {
+                        animation: 150,
+                        ghostClass: 'dragging',
+                        onEnd: (evt) => {
+                            this.reorderTodos(evt.oldIndex, evt.newIndex);
+                        }
+                    });
+                }
+            }
+
+            // Todo Management
+            async openTodoModal(todoId = null) {
+                const modal = document.getElementById('todoModal');
+                const form = document.getElementById('todoForm');
+                const title = document.getElementById('modalTitle');
+                const submitText = document.getElementById('submitText');
+
+                this.currentTodo = todoId ? this.todos.find(t => t.id === todoId) : null;
+
+                if (this.currentTodo) {
+                    title.textContent = 'Редактировать задачу';
+                    submitText.textContent = 'Сохранить';
+                    this.populateForm(this.currentTodo);
+                } else {
+                    title.textContent = 'Новая задача';
+                    submitText.textContent = 'Создать';
+                    form.reset();
+                    this.resetPrioritySelection();
+                }
+
+                this.populateCategories();
+                modal.classList.add('active');
+                document.getElementById('todoText').focus();
+            }
+
+            closeTodoModal() {
+                document.getElementById('todoModal').classList.remove('active');
+                this.currentTodo = null;
+                this.clearSubtasks();
+            }
+
+            populateForm(todo) {
+                document.getElementById('todoText').value = todo.text;
+                document.getElementById('todoDeadline').value = todo.deadline ? 
+                    new Date(todo.deadline).toISOString().slice(0, 16) : '';
+
+                // Set priority
+                document.querySelectorAll('.priority-option').forEach(option => {
+                    option.classList.remove('selected');
+                    if (option.dataset.priority === todo.priority) {
+                        option.classList.add('selected');
+                    }
+                });
+
+                // Set category
+                document.querySelectorAll('.category-option').forEach(option => {
+                    option.classList.remove('selected');
+                    if (parseInt(option.dataset.categoryId) === todo.categoryId) {
+                        option.classList.add('selected');
+                    }
+                });
+
+                // Set subtasks
+                this.clearSubtasks();
+                todo.subtasks?.forEach(subtask => {
+                    this.addSubtaskToList(subtask.text, subtask.completed);
+                });
+            }
+
+            resetPrioritySelection() {
+                document.querySelectorAll('.priority-option').forEach(option => {
+                    option.classList.remove('selected');
+                    if (option.dataset.priority === (this.preferences.defaultPriority || 'medium')) {
+                        option.classList.add('selected');
+                    }
+                });
+            }
+
+            populateCategories() {
+                const grid = document.getElementById('categoryGrid');
+                grid.innerHTML = this.categories.map(category => `
+                    <div class="category-option" data-category-id="${category.id}">
+                        <div style="font-size: 20px;">${category.icon}</div>
+                        <div style="font-size: 12px; font-weight: 500;">${category.name}</div>
+                    </div>
+                `).join('');
+
+                // Add event listeners
+                grid.querySelectorAll('.category-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        grid.querySelectorAll('.category-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                    });
+                });
+            }
+
+            addSubtask() {
+                const input = document.getElementById('subtaskInput');
+                const text = input.value.trim();
                 
-                if (form && input) {
-                    form.style.display = 'none';
+                if (text) {
+                    this.addSubtaskToList(text, false);
                     input.value = '';
-                    
-                    // Показываем главную кнопку
-                    this.tg?.MainButton?.show();
                 }
             }
 
-            async addTodo() {
-                const input = document.getElementById('todoInput');
-                const text = input?.value?.trim();
-                
+            addSubtaskToList(text, completed = false) {
+                const list = document.getElementById('subtaskList');
+                const item = document.createElement('div');
+                item.className = 'subtask-item';
+                item.innerHTML = `
+                    <input type="checkbox" ${completed ? 'checked' : ''} onchange="this.parentElement.dataset.completed = this.checked">
+                    <span style="flex: 1; ${completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${this.escapeHtml(text)}</span>
+                    <span class="remove-subtask" onclick="this.parentElement.remove()">×</span>
+                `;
+                item.dataset.text = text;
+                item.dataset.completed = completed;
+                list.appendChild(item);
+            }
+
+            clearSubtasks() {
+                document.getElementById('subtaskList').innerHTML = '';
+            }
+
+            getSubtasksFromForm() {
+                const items = document.querySelectorAll('#subtaskList .subtask-item');
+                return Array.from(items).map((item, index) => ({
+                    id: Date.now() + index,
+                    text: item.dataset.text,
+                    completed: item.dataset.completed === 'true'
+                }));
+            }
+
+            async saveTodo() {
+                const text = document.getElementById('todoText').value.trim();
                 if (!text) {
-                    this.showAlert('Введите текст задачи');
-                    input?.focus();
+                    this.showToast('Введите название задачи', 'error');
                     return;
                 }
 
-                if (text.length > 200) {
-                    this.showAlert('Задача слишком длинная (максимум 200 символов)');
-                    return;
-                }
+                const priority = document.querySelector('.priority-option.selected')?.dataset.priority || 'medium';
+                const categoryId = parseInt(document.querySelector('.category-option.selected')?.dataset.categoryId) || null;
+                const deadline = document.getElementById('todoDeadline').value || null;
+                const subtasks = this.getSubtasksFromForm();
 
                 try {
-                    const response = await fetch(`${this.apiUrl}/todos`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            userId: this.user.id,
-                            text: text
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Ошибка добавления задачи');
+                    let response;
+                    if (this.currentTodo) {
+                        // Update existing todo
+                        response = await fetch(`${this.apiUrl}/todos/${this.currentTodo.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: this.user.id,
+                                text,
+                                priority,
+                                categoryId,
+                                deadline,
+                                subtasks
+                            })
+                        });
+                    } else {
+                        // Create new todo
+                        response = await fetch(`${this.apiUrl}/todos`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: this.user.id,
+                                text,
+                                priority,
+                                categoryId,
+                                deadline,
+                                subtasks
+                            })
+                        });
                     }
 
-                    const newTodo = await response.json();
-                    this.todos.push(newTodo);
+                    if (!response.ok) throw new Error('Ошибка сохранения');
+
+                    const savedTodo = await response.json();
                     
-                    this.hideAddTodoForm();
-                    this.renderApp();
-                    
-                    // Показываем уведомление
+                    if (this.currentTodo) {
+                        const index = this.todos.findIndex(t => t.id === this.currentTodo.id);
+                        this.todos[index] = savedTodo;
+                    } else {
+                        this.todos.push(savedTodo);
+                    }
+
+                    this.closeTodoModal();
+                    this.filterTodos();
+                    this.updateCurrentView();
+                    this.showToast(this.currentTodo ? 'Задача обновлена' : 'Задача создана', 'success');
+
+                    // Haptic feedback
                     this.tg?.HapticFeedback?.notificationOccurred('success');
-                    this.showAlert('Задача добавлена! ✅');
-                    
+
                 } catch (error) {
-                    console.error('Ошибка добавления задачи:', error);
-                    this.showAlert('Не удалось добавить задачу. Попробуйте позже.');
+                    console.error('Ошибка сохранения:', error);
+                    this.showToast('Не удалось сохранить задачу', 'error');
                 }
             }
 
-            async toggleTodo(todoId, completed) {
+            async toggleTodo(todoId) {
+                const todo = this.todos.find(t => t.id === todoId);
+                if (!todo) return;
+
                 try {
                     const response = await fetch(`${this.apiUrl}/todos/${todoId}`, {
                         method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             userId: this.user.id,
-                            completed: completed
+                            completed: !todo.completed
                         })
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Ошибка обновления задачи');
-                    }
+                    if (!response.ok) throw new Error('Ошибка обновления');
 
-                    // Обновляем локальные данные
-                    const todoIndex = this.todos.findIndex(todo => todo.id === todoId);
-                    if (todoIndex !== -1) {
-                        this.todos[todoIndex].completed = completed;
-                        this.renderApp();
-                    }
+                    const updatedTodo = await response.json();
+                    const index = this.todos.findIndex(t => t.id === todoId);
+                    this.todos[index] = updatedTodo;
+
+                    this.filterTodos();
+                    this.updateCurrentView();
                     
-                    // Тактильная обратная связь
+                    // Haptic feedback
                     this.tg?.HapticFeedback?.impactOccurred('light');
-                    
+
                 } catch (error) {
-                    console.error('Ошибка обновления задачи:', error);
-                    this.showAlert('Не удалось обновить задачу');
-                    // Откатываем изменение в UI
-                    this.renderApp();
+                    console.error('Ошибка обновления:', error);
+                    this.showToast('Не удалось обновить задачу', 'error');
                 }
+            }
+
+            async toggleSubtask(todoId, subtaskId) {
+                const todo = this.todos.find(t => t.id === todoId);
+                if (!todo) return;
+
+                const subtask = todo.subtasks.find(st => st.id === subtaskId);
+                if (!subtask) return;
+
+                subtask.completed = !subtask.completed;
+
+                try {
+                    const response = await fetch(`${this.apiUrl}/todos/${todoId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: this.user.id,
+                            subtasks: todo.subtasks
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Ошибка обновления');
+
+                    this.updateCurrentView();
+                    this.tg?.HapticFeedback?.impactOccurred('light');
+
+                } catch (error) {
+                    console.error('Ошибка обновления подзадачи:', error);
+                    subtask.completed = !subtask.completed; // Rollback
+                    this.updateCurrentView();
+                }
+            }
+
+            editTodo(todoId) {
+                this.openTodoModal(todoId);
             }
 
             async deleteTodo(todoId) {
@@ -617,9 +1908,7 @@
 
                 if (this.tg?.showConfirm) {
                     this.tg.showConfirm(`Удалить задачу "${todo.text}"?`, async (confirmed) => {
-                        if (confirmed) {
-                            await this.performDelete(todoId);
-                        }
+                        if (confirmed) await this.performDelete(todoId);
                     });
                 } else {
                     if (confirm(`Удалить задачу "${todo.text}"?`)) {
@@ -632,65 +1921,53 @@
                 try {
                     const response = await fetch(`${this.apiUrl}/todos/${todoId}`, {
                         method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            userId: this.user.id
-                        })
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: this.user.id })
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Ошибка удаления задачи');
-                    }
+                    if (!response.ok) throw new Error('Ошибка удаления');
 
-                    // Удаляем из локальных данных
-                    this.todos = this.todos.filter(todo => todo.id !== todoId);
-                    this.renderApp();
-                    
-                    // Тактильная обратная связь
+                    this.todos = this.todos.filter(t => t.id !== todoId);
+                    this.filterTodos();
+                    this.updateCurrentView();
+                    this.showToast('Задача удалена', 'success');
+
                     this.tg?.HapticFeedback?.notificationOccurred('success');
-                    
+
                 } catch (error) {
-                    console.error('Ошибка удаления задачи:', error);
-                    this.showAlert('Не удалось удалить задачу');
+                    console.error('Ошибка удаления:', error);
+                    this.showToast('Не удалось удалить задачу', 'error');
                 }
             }
 
-            showAlert(message) {
-                if (this.tg?.showAlert) {
-                    this.tg.showAlert(message);
-                } else {
-                    alert(message);
+            // Filtering and Sorting
+            filterTodos() {
+                let filtered = [...this.todos];
+
+                // Search filter
+                if (this.searchQuery) {
+                    const query = this.searchQuery.toLowerCase();
+                    filtered = filtered.filter(todo => 
+                        todo.text.toLowerCase().includes(query) ||
+                        todo.subtasks?.some(st => st.text.toLowerCase().includes(query))
+                    );
                 }
-            }
 
-            showError(message) {
-                const app = document.getElementById('app');
-                if (app) {
-                    app.innerHTML = `
-                        <div class="error-state">
-                            <h3>⚠️ Ошибка</h3>
-                            <p>${message}</p>
-                            <button onclick="window.location.reload()">🔄 Попробовать снова</button>
-                        </div>
-                    `;
+                // Status filter
+                switch (this.selectedFilters.status) {
+                    case 'pending':
+                        filtered = filtered.filter(todo => !todo.completed);
+                        break;
+                    case 'completed':
+                        filtered = filtered.filter(todo => todo.completed);
+                        break;
+                    case 'overdue':
+                        filtered = filtered.filter(todo => 
+                            !todo.completed && todo.deadline && new Date(todo.deadline) < new Date()
+                        );
+                        break;
                 }
-            }
 
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-        }
-
-        // Инициализация приложения
-        let telegramApp;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            telegramApp = new TelegramWebApp();
-        });
-    </script>
-</body>
-</html>
+                // Priority filter
+                if (this.selectedFilters.priority !== 'all') {
+                    filtered = filtered.filter(todo => todo.priority === this.selectedFilters.priority);
