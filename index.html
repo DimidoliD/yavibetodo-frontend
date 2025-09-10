@@ -1,32 +1,6 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ya Vi Be Todo</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            padding: 16px;
-            padding-bottom: 100px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 24px;
-            padding: 20px 0;
-        }
-        
-        .header h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--tg-theme-button-color, #2481cc);
-            margin-bottom: 8px;
+.tab.active {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: white;
         }
         
         .stats {
@@ -61,9 +35,27 @@
             border-radius: 12px;
             margin-bottom: 12px;
             padding: 16px;
+            transition: all 0.2s ease;
+        }
+        
+        .todo-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .todo-item.overdue {
+            border-left: 4px solid #ef4444;
+        }
+        
+        .todo-item.delegated {
+            border-left: 4px solid #8b5cf6;
+        }
+        
+        .todo-header {
             display: flex;
             align-items: flex-start;
             gap: 12px;
+            margin-bottom: 8px;
         }
         
         .todo-checkbox {
@@ -105,7 +97,30 @@
         .todo-meta {
             font-size: 12px;
             color: var(--tg-theme-hint-color, #999999);
+            margin-bottom: 8px;
         }
+        
+        .todo-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .badge-priority-high { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .badge-priority-medium { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .badge-priority-low { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        
+        .badge-deadline { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .badge-deadline.overdue { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        
+        .badge-assignee { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
         
         .todo-actions {
             display: flex;
@@ -159,6 +174,8 @@
             border-radius: 12px;
             width: 100%;
             max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         
         .modal-header {
@@ -193,12 +210,69 @@
             font-weight: 500;
         }
         
-        .form-input {
+        .form-input, .form-select {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             font-size: 16px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .priority-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .priority-option {
+            padding: 12px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--tg-theme-bg-color, #ffffff);
+            font-size: 14px;
+        }
+        
+        .priority-option.selected {
+            border-color: var(--tg-theme-button-color, #2481cc);
+            background: var(--tg-theme-button-color, #2481cc);
+            color: white;
+        }
+        
+        .user-search {
+            position: relative;
+        }
+        
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-bg-color, #ffffff);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+        
+        .search-result {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .search-result:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        .search-result:last-child {
+            border-bottom: none;
         }
         
         .btn {
@@ -230,6 +304,15 @@
             text-align: center;
             padding: 40px;
         }
+        
+        .delegation-hint {
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #8b5cf6;
+        }
     </style>
 </head>
 <body>
@@ -250,6 +333,34 @@
                     <label class="form-label">Название задачи</label>
                     <input type="text" class="form-input" id="todoText" placeholder="Введите название...">
                 </div>
+
+                <div class="form-group">
+                    <label class="form-label">Приоритет</label>
+                    <div class="priority-options">
+                        <div class="priority-option" data-priority="high">🔥 Высокий</div>
+                        <div class="priority-option selected" data-priority="medium">⚡ Средний</div>
+                        <div class="priority-option" data-priority="low">🌱 Низкий</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Дедлайн</label>
+                    <input type="datetime-local" class="form-input" id="todoDeadline">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Назначить пользователю (опционально)</label>
+                    <div class="delegation-hint">
+                        💡 Введите @username для делегирования задачи
+                    </div>
+                    <div class="user-search">
+                        <input type="text" class="form-input" id="assignToInput" 
+                               placeholder="@username или оставьте пустым для себя"
+                               oninput="searchUsers(this.value)">
+                        <div class="search-results" id="searchResults"></div>
+                    </div>
+                </div>
+
                 <div>
                     <button class="btn btn-primary" onclick="saveTodo()">Создать</button>
                     <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
@@ -263,12 +374,16 @@
             tg: null,
             user: null,
             todos: [],
-            apiUrl: 'https://yavibetodo-telegram-bot.onrender.com/api'
+            assignedTasks: [],
+            delegatedTasks: [],
+            currentTab: 'personal',
+            apiUrl: 'https://yavibetodo-telegram-bot.onrender.com/api',
+            searchTimeout: null
         };
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('Запуск приложения...');
+            console.log('Запуск приложения командной работы...');
             
             app.tg = window.Telegram?.WebApp;
             if (app.tg) {
@@ -306,8 +421,10 @@
                 const data = await response.json();
                 app.user = data.user;
                 app.todos = data.todos || [];
+                app.assignedTasks = data.assignedTasks || [];
+                app.delegatedTasks = data.delegatedTasks || [];
                 
-                console.log('Данные загружены:', app.user, app.todos);
+                console.log('Данные загружены:', app.user);
                 renderApp();
                 
             } catch (error) {
@@ -323,70 +440,189 @@
         }
 
         function renderApp() {
-            const completed = app.todos.filter(t => t.completed).length;
-            const total = app.todos.length;
-            const pending = total - completed;
-            
             document.getElementById('app').innerHTML = `
                 <div class="header">
-                    <h1>📝 Ya Vi Be Todo</h1>
+                    <h1>👥 Ya Vi Be Todo</h1>
                     <p>Привет, ${app.user?.first_name || 'Пользователь'}!</p>
                 </div>
 
-                <div class="stats">
-                    <div class="stat-card">
-                        <span class="stat-number">${total}</span>
-                        <div class="stat-label">Всего</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number">${completed}</span>
-                        <div class="stat-label">Выполнено</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number">${pending}</span>
-                        <div class="stat-label">В работе</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number">${total > 0 ? Math.round((completed/total)*100) : 0}%</span>
-                        <div class="stat-label">Прогресс</div>
-                    </div>
+                <div class="tabs">
+                    <button class="tab ${app.currentTab === 'personal' ? 'active' : ''}" onclick="switchTab('personal')">
+                        📝 Мои задачи
+                    </button>
+                    <button class="tab ${app.currentTab === 'assigned' ? 'active' : ''}" onclick="switchTab('assigned')">
+                        👤 Назначенные мне
+                    </button>
+                    <button class="tab ${app.currentTab === 'delegated' ? 'active' : ''}" onclick="switchTab('delegated')">
+                        📤 Делегированные
+                    </button>
                 </div>
 
+                ${renderStats()}
+                
                 <div id="todosList">
-                    ${renderTodos()}
+                    ${renderCurrentTab()}
                 </div>
             `;
         }
 
-        function renderTodos() {
-            if (app.todos.length === 0) {
+        function renderStats() {
+            const personalTotal = app.todos.length;
+            const personalCompleted = app.todos.filter(t => t.completed).length;
+            const assignedTotal = app.assignedTasks.length;
+            const assignedCompleted = app.assignedTasks.filter(t => t.completed).length;
+            const delegatedTotal = app.delegatedTasks.length;
+            const delegatedCompleted = app.delegatedTasks.filter(t => t.completed).length;
+
+            let stats = [];
+            
+            if (app.currentTab === 'personal') {
+                stats = [
+                    { number: personalTotal, label: 'Всего' },
+                    { number: personalCompleted, label: 'Выполнено' },
+                    { number: personalTotal - personalCompleted, label: 'В работе' },
+                    { number: personalTotal > 0 ? Math.round((personalCompleted/personalTotal)*100) : 0, label: 'Прогресс %' }
+                ];
+            } else if (app.currentTab === 'assigned') {
+                const overdue = app.assignedTasks.filter(t => 
+                    !t.completed && t.deadline && new Date(t.deadline) < new Date()
+                ).length;
+                stats = [
+                    { number: assignedTotal, label: 'Назначено' },
+                    { number: assignedCompleted, label: 'Выполнено' },
+                    { number: assignedTotal - assignedCompleted, label: 'В работе' },
+                    { number: overdue, label: 'Просрочено' }
+                ];
+            } else {
+                stats = [
+                    { number: delegatedTotal, label: 'Делегировано' },
+                    { number: delegatedCompleted, label: 'Выполнено' },
+                    { number: delegatedTotal - delegatedCompleted, label: 'В процессе' },
+                    { number: delegatedTotal > 0 ? Math.round((delegatedCompleted/delegatedTotal)*100) : 0, label: 'Эффективность %' }
+                ];
+            }
+
+            return `
+                <div class="stats">
+                    ${stats.map(stat => `
+                        <div class="stat-card">
+                            <span class="stat-number">${stat.number}</span>
+                            <div class="stat-label">${stat.label}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderCurrentTab() {
+            let tasks = [];
+            let emptyMessage = '';
+
+            switch (app.currentTab) {
+                case 'personal':
+                    tasks = app.todos;
+                    emptyMessage = 'У вас пока нет личных задач';
+                    break;
+                case 'assigned':
+                    tasks = app.assignedTasks;
+                    emptyMessage = 'Вам пока не назначали задач';
+                    break;
+                case 'delegated':
+                    tasks = app.delegatedTasks;
+                    emptyMessage = 'Вы пока никому не делегировали задач';
+                    break;
+            }
+
+            if (tasks.length === 0) {
                 return `
                     <div class="empty-state">
-                        <h3>📋 Пока задач нет</h3>
-                        <p>Нажмите кнопку "+" чтобы создать первую задачу</p>
+                        <h3>📋 ${emptyMessage}</h3>
+                        <p>Нажмите кнопку "+" чтобы создать задачу</p>
                     </div>
                 `;
             }
 
-            return app.todos
-                .sort((a, b) => a.completed - b.completed || new Date(b.createdAt) - new Date(a.createdAt))
-                .map(todo => `
-                    <div class="todo-item">
+            return tasks
+                .sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed - b.completed;
+                    if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+                    return new Date(b.createdAt) - new Date(a.createdAt);
+                })
+                .map(todo => renderTodoItem(todo))
+                .join('');
+        }
+
+        function renderTodoItem(todo) {
+            const isOverdue = todo.deadline && new Date(todo.deadline) < new Date() && !todo.completed;
+            const isDelegated = app.currentTab === 'delegated';
+            
+            return `
+                <div class="todo-item ${isOverdue ? 'overdue' : ''} ${isDelegated ? 'delegated' : ''}">
+                    <div class="todo-header">
                         <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" 
                              onclick="toggleTodo(${todo.id})"></div>
+                        
                         <div class="todo-content">
                             <div class="todo-title" style="${todo.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(todo.text)}</div>
-                            <div class="todo-meta">${formatDate(todo.createdAt)}</div>
+                            
+                            <div class="todo-badges">
+                                <span class="badge badge-priority-${todo.priority}">
+                                    ${todo.priority === 'high' ? '🔥 Высокий' : 
+                                      todo.priority === 'medium' ? '⚡ Средний' : '🌱 Низкий'}
+                                </span>
+                                
+                                ${todo.deadline ? `
+                                    <span class="badge badge-deadline ${isOverdue ? 'overdue' : ''}">
+                                        ${isOverdue ? '⚠️' : '📅'} ${formatDate(todo.deadline)}
+                                    </span>
+                                ` : ''}
+                                
+                                ${todo.assignedTo && app.currentTab === 'delegated' ? `
+                                    <span class="badge badge-assignee">
+                                        👤 ${todo.assignedTo.first_name}
+                                    </span>
+                                ` : ''}
+                                
+                                ${todo.assignedBy && app.currentTab === 'assigned' ? `
+                                    <span class="badge badge-assignee">
+                                        👤 От: ${todo.assignedBy.first_name}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="todo-meta">
+                                Создано: ${formatDate(todo.createdAt)}
+                                ${todo.completedAt ? ` • Выполнено: ${formatDate(todo.completedAt)}` : ''}
+                            </div>
                         </div>
+                        
                         <div class="todo-actions">
-                            <button class="todo-action" onclick="deleteTodo(${todo.id})">🗑️</button>
+                            <button class="todo-action" onclick="deleteTodo(${todo.id})" title="Удалить">🗑️</button>
                         </div>
                     </div>
-                `).join('');
+                </div>
+            `;
+        }
+
+        function switchTab(tab) {
+            app.currentTab = tab;
+            renderApp();
         }
 
         async function toggleTodo(id) {
-            const todo = app.todos.find(t => t.id === id);
+            let todo = null;
+            let isPersonal = false;
+            
+            // Находим задачу в соответствующем списке
+            if (app.currentTab === 'personal') {
+                todo = app.todos.find(t => t.id === id);
+                isPersonal = true;
+            } else if (app.currentTab === 'assigned') {
+                todo = app.assignedTasks.find(t => t.id === id);
+            } else {
+                todo = app.delegatedTasks.find(t => t.id === id);
+            }
+            
             if (!todo) return;
 
             try {
@@ -401,6 +637,11 @@
 
                 if (response.ok) {
                     todo.completed = !todo.completed;
+                    if (todo.completed) {
+                        todo.completedAt = new Date().toISOString();
+                    } else {
+                        todo.completedAt = null;
+                    }
                     renderApp();
                     app.tg?.HapticFeedback?.impactOccurred('light');
                 }
@@ -420,7 +661,15 @@
                 });
 
                 if (response.ok) {
-                    app.todos = app.todos.filter(t => t.id !== id);
+                    // Удаляем из соответствующего списка
+                    if (app.currentTab === 'personal') {
+                        app.todos = app.todos.filter(t => t.id !== id);
+                    } else if (app.currentTab === 'assigned') {
+                        app.assignedTasks = app.assignedTasks.filter(t => t.id !== id);
+                    } else {
+                        app.delegatedTasks = app.delegatedTasks.filter(t => t.id !== id);
+                    }
+                    
                     renderApp();
                     app.tg?.HapticFeedback?.notificationOccurred('success');
                 }
@@ -437,11 +686,76 @@
         function closeModal() {
             document.getElementById('todoModal').classList.remove('active');
             document.getElementById('todoText').value = '';
+            document.getElementById('todoDeadline').value = '';
+            document.getElementById('assignToInput').value = '';
+            document.getElementById('searchResults').style.display = 'none';
+            resetPrioritySelection();
+        }
+
+        function resetPrioritySelection() {
+            document.querySelectorAll('.priority-option').forEach(option => {
+                option.classList.remove('selected');
+                if (option.dataset.priority === 'medium') {
+                    option.classList.add('selected');
+                }
+            });
+        }
+
+        async function searchUsers(query) {
+            clearTimeout(app.searchTimeout);
+            const resultsContainer = document.getElementById('searchResults');
+            
+            if (!query || query.length < 2) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            app.searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`${app.apiUrl}/users/search?query=${encodeURIComponent(query)}`);
+                    if (response.ok) {
+                        const users = await response.json();
+                        displaySearchResults(users);
+                    }
+                } catch (error) {
+                    console.error('Ошибка поиска:', error);
+                }
+            }, 300);
+        }
+
+        function displaySearchResults(users) {
+            const resultsContainer = document.getElementById('searchResults');
+            
+            if (users.length === 0) {
+                resultsContainer.innerHTML = '<div class="search-result">Пользователи не найдены</div>';
+            } else {
+                resultsContainer.innerHTML = users.map(user => `
+                    <div class="search-result" onclick="selectUser('${user.username}', '${user.first_name}')">
+                        <strong>@${user.username}</strong><br>
+                        <small>${user.first_name} ${user.last_name || ''}</small>
+                    </div>
+                `).join('');
+            }
+            
+            resultsContainer.style.display = 'block';
+        }
+
+        function selectUser(username, firstName) {
+            document.getElementById('assignToInput').value = `@${username}`;
+            document.getElementById('searchResults').style.display = 'none';
         }
 
         async function saveTodo() {
             const text = document.getElementById('todoText').value.trim();
-            if (!text) return;
+            if (!text) {
+                alert('Введите название задачи');
+                return;
+            }
+
+            const priority = document.querySelector('.priority-option.selected')?.dataset.priority || 'medium';
+            const deadline = document.getElementById('todoDeadline').value || null;
+            const assignToValue = document.getElementById('assignToInput').value.trim();
+            const assignedTo = assignToValue.startsWith('@') ? assignToValue.substring(1) : assignToValue || null;
 
             try {
                 const response = await fetch(`${app.apiUrl}/todos`, {
@@ -450,19 +764,37 @@
                     body: JSON.stringify({
                         userId: app.user.id,
                         text: text,
-                        priority: 'medium'
+                        priority: priority,
+                        deadline: deadline,
+                        assignedTo: assignedTo
                     })
                 });
 
                 if (response.ok) {
                     const newTodo = await response.json();
-                    app.todos.push(newTodo);
+                    
+                    if (assignedTo) {
+                        // Делегированная задача
+                        app.delegatedTasks.push(newTodo);
+                    } else {
+                        // Личная задача
+                        app.todos.push(newTodo);
+                    }
+                    
                     closeModal();
                     renderApp();
                     app.tg?.HapticFeedback?.notificationOccurred('success');
+                    
+                    if (assignedTo) {
+                        alert(`Задача успешно назначена пользователю @${assignedTo}! Они получат уведомление в Telegram.`);
+                    }
+                } else {
+                    const error = await response.json();
+                    alert(`Ошибка: ${error.error || 'Не удалось создать задачу'}`);
                 }
             } catch (error) {
                 console.error('Ошибка:', error);
+                alert('Не удалось создать задачу');
             }
         }
 
@@ -473,16 +805,127 @@
         }
 
         function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('ru');
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = date - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) return 'Сегодня';
+            if (diffDays === 1) return 'Завтра';
+            if (diffDays === -1) return 'Вчера';
+            if (diffDays < -1) return `${Math.abs(diffDays)} дн. назад`;
+            if (diffDays > 1 && diffDays <= 7) return `Через ${diffDays} дн.`;
+
+            return date.toLocaleDateString('ru');
         }
 
-        // Закрытие модала по клику вне его
-        document.addEventListener('click', (e) => {
-            const modal = document.getElementById('todoModal');
-            if (e.target === modal) {
-                closeModal();
+        // Обработчики событий
+        document.addEventListener('DOMContentLoaded', () => {
+            // Priority selection
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('priority-option')) {
+                    document.querySelectorAll('.priority-option').forEach(option => {
+                        option.classList.remove('selected');
+                    });
+                    e.target.classList.add('selected');
+                }
+            });
+
+            // Close modal on backdrop click
+            document.addEventListener('click', (e) => {
+                const modal = document.getElementById('todoModal');
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+
+            // Hide search results when clicking outside
+            document.addEventListener('click', (e) => {
+                const searchContainer = document.querySelector('.user-search');
+                if (!searchContainer.contains(e.target)) {
+                    document.getElementById('searchResults').style.display = 'none';
+                }
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+                if (e.key === 'Enter' && e.target.id === 'todoText') {
+                    e.preventDefault();
+                    saveTodo();
+                }
+            });
+        });
+
+        // Установка минимальной даты для дедлайна (сегодня)
+        document.addEventListener('DOMContentLoaded', () => {
+            const deadlineInput = document.getElementById('todoDeadline');
+            if (deadlineInput) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                
+                deadlineInput.min = `${year}-${month}-${day}T${hours}:${minutes}`;
             }
         });
     </script>
 </body>
-</html>
+</html><!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ya Vi Be Todo - Командная работа</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 20px 0;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--tg-theme-button-color, #2481cc);
+            margin-bottom: 8px;
+        }
+        
+        .tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        
+        .tab.active {
+            background: var(--tg-theme-button-color, #2481cc);
