@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ya Vibe ToDo</title>
+    <title>Ya Vibe Todo</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -220,12 +220,49 @@
     <div class="modal" id="todoModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Новая задача</h3>
+                <h3>Создать задачу</h3>
                 <button class="modal-close" onclick="closeModal()">×</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Название задачи</label>
+                    <input type="text" class="form-input" id="todoText" placeholder="Что нужно сделать?">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Приоритет</label>
+                    <div class="priority-options">
+                        <div class="priority-option" data-priority="high">🔥 Высокий</div>
+                        <div class="priority-option selected" data-priority="medium">⚡ Средний</div>
+                        <div class="priority-option" data-priority="low">🌱 Низкий</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Дедлайн</label>
+                    <input type="datetime-local" class="form-input" id="todoDeadline">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Делегировать задачу</label>
+                    <div class="delegation-hint">
+                        💡 Введите @username чтобы назначить задачу коллеге
+                    </div>
+                    <div class="user-search">
+                        <input type="text" class="form-input" id="assignToInput" 
+                               placeholder="@username или оставьте пустым для себя"
+                               oninput="searchUsers(this.value)">
+                        <div class="search-results" id="searchResults"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 32px;">
+                    <button class="btn btn-primary" onclick="saveTodo()">Создать задачу</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
                     <input type="text" class="form-input" id="todoText" placeholder="Введите название...">
                 </div>
 
@@ -312,7 +349,7 @@
         function renderApp() {
             document.getElementById('app').innerHTML = `
                 <div class="header">
-                    <h1>👥 Ya Vibe ToDo</h1>
+                    <h1>👥 Ya Vibe Todo</h1>
                     <p>Привет, ${app.user?.first_name || 'Пользователь'}!</p>
                 </div>
 
@@ -421,40 +458,43 @@
             const isOverdue = todo.deadline && new Date(todo.deadline) < new Date() && !todo.completed;
             
             return `
-                <div class="todo-item">
-                    <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" 
-                         onclick="toggleTodo(${todo.id})"></div>
-                    
-                    <div class="todo-content">
-                        <div class="todo-title" style="${todo.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(todo.text)}</div>
+                <div class="todo-item ${isOverdue ? 'overdue' : ''}">
+                    <div class="todo-header">
+                        <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" 
+                             onclick="toggleTodo(${todo.id})"></div>
                         
-                        <div style="margin: 4px 0;">
-                            <span class="badge badge-${todo.priority}">
-                                ${todo.priority === 'high' ? '🔥' : todo.priority === 'medium' ? '⚡' : '🌱'}
-                            </span>
+                        <div class="todo-content">
+                            <div class="todo-title ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.text)}</div>
                             
-                            ${todo.deadline ? `
-                                <span class="badge ${isOverdue ? 'badge-overdue' : 'badge-deadline'}">
-                                    ${isOverdue ? '⚠️' : '📅'} ${formatDate(todo.deadline)}
+                            <div style="margin: 8px 0;">
+                                <span class="badge badge-${todo.priority}">
+                                    ${todo.priority === 'high' ? '🔥 ВЫСОКИЙ' : todo.priority === 'medium' ? '⚡ СРЕДНИЙ' : '🌱 НИЗКИЙ'}
                                 </span>
-                            ` : ''}
+                                
+                                ${todo.deadline ? `
+                                    <span class="badge ${isOverdue ? 'badge-overdue' : 'badge-deadline'}">
+                                        ${isOverdue ? '⚠️ ПРОСРОЧЕНО' : '📅'} ${formatDate(todo.deadline)}
+                                    </span>
+                                ` : ''}
+                                
+                                ${todo.assignedTo && app.currentTab === 'delegated' ? `
+                                    <span class="badge badge-deadline">👤 ${todo.assignedTo.first_name}</span>
+                                ` : ''}
+                                
+                                ${todo.assignedBy && app.currentTab === 'assigned' ? `
+                                    <span class="badge badge-deadline">👤 От: ${todo.assignedBy.first_name}</span>
+                                ` : ''}
+                            </div>
                             
-                            ${todo.assignedTo && app.currentTab === 'delegated' ? `
-                                <span class="badge badge-deadline">👤 ${todo.assignedTo.first_name}</span>
-                            ` : ''}
-                            
-                            ${todo.assignedBy && app.currentTab === 'assigned' ? `
-                                <span class="badge badge-deadline">👤 От: ${todo.assignedBy.first_name}</span>
-                            ` : ''}
+                            <div class="todo-meta">
+                                Создано: ${formatDate(todo.createdAt)}
+                                ${todo.completedAt ? ` • Выполнено: ${formatDate(todo.completedAt)}` : ''}
+                            </div>
                         </div>
                         
-                        <div class="todo-meta">
-                            Создано: ${formatDate(todo.createdAt)}
+                        <div class="todo-actions">
+                            <button class="todo-action" onclick="deleteTodo(${todo.id})" title="Удалить задачу">🗑️</button>
                         </div>
-                    </div>
-                    
-                    <div class="todo-actions">
-                        <button class="todo-action" onclick="deleteTodo(${todo.id})">🗑️</button>
                     </div>
                 </div>
             `;
@@ -586,6 +626,7 @@
             const text = document.getElementById('todoText').value.trim();
             if (!text) {
                 alert('Введите название задачи');
+                document.getElementById('todoText').focus();
                 return;
             }
 
@@ -593,6 +634,12 @@
             const deadline = document.getElementById('todoDeadline').value || null;
             const assignToValue = document.getElementById('assignToInput').value.trim();
             const assignedTo = assignToValue.startsWith('@') ? assignToValue.substring(1) : assignToValue || null;
+
+            // Показываем индикатор загрузки
+            const submitBtn = document.querySelector('.btn-primary');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Создание...';
+            submitBtn.disabled = true;
 
             try {
                 const response = await fetch(`${app.apiUrl}/todos`, {
@@ -612,7 +659,7 @@
                     
                     if (assignedTo) {
                         app.delegatedTasks.push(newTodo);
-                        alert(`Задача назначена @${assignedTo}! Они получат уведомление.`);
+                        alert(`✅ Задача назначена пользователю @${assignedTo}!\nОни получат уведомление в Telegram.`);
                     } else {
                         app.todos.push(newTodo);
                     }
@@ -622,11 +669,15 @@
                     app.tg?.HapticFeedback?.notificationOccurred('success');
                 } else {
                     const error = await response.json();
-                    alert(`Ошибка: ${error.error || 'Не удалось создать задачу'}`);
+                    alert(`❌ Ошибка: ${error.error || 'Не удалось создать задачу'}`);
                 }
             } catch (error) {
-                console.error('Ошибка:', error);
-                alert('Не удалось создать задачу');
+                console.error('Ошибка создания задачи:', error);
+                alert('❌ Не удалось создать задачу. Проверьте подключение к интернету.');
+            } finally {
+                // Возвращаем кнопку в исходное состояние
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             }
         }
 
